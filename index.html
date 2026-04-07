@@ -1,0 +1,2053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlagiaGuard — Plagiarism Detection System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --surface: #1e1e2e;
+    --surface2: #252535;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a70;
+    --accent: #7c6af7;
+    --accent2: #a89cf8;
+    --green: #3dd68c;
+    --amber: #f5a623;
+    --red: #f06565;
+    --teal: #3ecfcf;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* Ambient Lighting Effects */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 20%, rgba(124, 106, 247, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(62, 207, 207, 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 40% 60%, rgba(61, 214, 140, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .app {
+    position: relative;
+    min-height: 100vh;
+  }
+
+  .app::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--accent), var(--teal), var(--green));
+    border-radius: 16px;
+    opacity: 0.1;
+    filter: blur(8px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px;
+    min-height: 100vh;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    position: relative;
+  }
+
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--accent), var(--teal), var(--green), var(--amber));
+    background-size: 300% 300%;
+    opacity: 0.05;
+    animation: sidebarGlow 10s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  @keyframes sidebarGlow {
+    0%, 100% { background-position: 0% 0%; }
+    33% { background-position: 100% 100%; }
+    66% { background-position: 100% 0%; }
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    padding: 0 20px 28px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .nav { padding: 16px 0; flex: 1; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 500;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .nav-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, var(--accent), var(--teal), var(--green));
+    background-size: 200% 200%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: -1;
+  }
+
+  .nav-item:hover::before {
+    opacity: 0.1;
+    animation: navGlow 2s ease-in-out infinite;
+  }
+
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active { color: var(--accent2); border-left-color: var(--accent); background: rgba(124,106,247,0.08); }
+
+  @keyframes navGlow {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+  }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .main { 
+    margin-left: 220px; 
+    padding: 32px; 
+    min-height: 100vh; 
+    max-width: 1200px;
+    position: relative;
+  }
+
+  .main::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      linear-gradient(45deg, rgba(124, 106, 247, 0.03) 0%, transparent 25%),
+      linear-gradient(-45deg, rgba(62, 207, 207, 0.02) 0%, transparent 25%),
+      linear-gradient(135deg, rgba(61, 214, 140, 0.02) 0%, transparent 25%);
+    background-size: 200% 200%;
+    animation: mainFlow 15s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  @keyframes mainFlow {
+    0%, 100% { background-position: 0% 0%, 0% 0%, 0% 0%; }
+    50% { background-position: 100% 100%, 100% 100%, 100% 100%; }
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── Topbar ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    position: relative;
+  }
+
+  .topbar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, rgba(124, 106, 247, 0.02), rgba(62, 207, 207, 0.02), rgba(61, 214, 140, 0.02));
+    background-size: 200% 100%;
+    animation: topbarFlow 12s ease-in-out infinite;
+    border-radius: var(--radius);
+    pointer-events: none;
+  }
+
+  @keyframes topbarFlow {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 100% 0%; }
+  }
+
+  .page-title { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-sub { color: var(--text2); font-size: 13px; margin-top: 2px; }
+
+  /* ── Stats Row ── */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    border-radius: 0 12px 0 60px;
+    opacity: 0.08;
+    transition: all 0.3s ease;
+  }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.amber::before { background: var(--amber); }
+  .stat-card.red::before { background: var(--red); }
+  .stat-card.teal::before { background: var(--teal); }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(45deg, var(--accent), var(--teal), var(--green), var(--amber), var(--red));
+    background-size: 300% 300%;
+    border-radius: var(--radius);
+    z-index: -1;
+    opacity: 0;
+    animation: statGlow 6s ease-in-out infinite;
+    transition: opacity 0.3s ease;
+  }
+
+  .stat-card:hover::after {
+    opacity: 0.2;
+  }
+
+  @keyframes statGlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text3); font-weight: 500; margin-bottom: 8px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 700; color: var(--text); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.teal { color: var(--teal); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--accent), var(--teal), var(--green), var(--amber), var(--red), var(--accent));
+    background-size: 400% 400%;
+    border-radius: calc(var(--radius) + 2px);
+    z-index: -1;
+    animation: colorMix 8s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .card:hover::before {
+    opacity: 0.3;
+  }
+
+  @keyframes colorMix {
+    0% { background-position: 0% 50%; }
+    25% { background-position: 100% 50%; }
+    50% { background-position: 100% 100%; }
+    75% { background-position: 0% 100%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+  }
+
+  /* ── Upload Zone ── */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+
+  .upload-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg3);
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(124,106,247,0.05);
+  }
+
+  .upload-icon { font-size: 32px; margin-bottom: 12px; }
+  .upload-title { font-weight: 500; color: var(--text); margin-bottom: 4px; font-size: 14px; }
+  .upload-sub { color: var(--text2); font-size: 12px; }
+
+  .file-list { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
+
+  .file-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+  }
+
+  .file-item-name { flex: 1; font-family: 'IBM Plex Mono', monospace; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item-size { color: var(--text3); font-size: 11px; }
+  .file-item-remove { cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; }
+  .file-item-remove:hover { color: var(--red); }
+
+  /* ── Textarea ── */
+  .text-area-wrap { margin-bottom: 16px; }
+  .text-area-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; font-weight: 500; letter-spacing: 0.3px; }
+
+  textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    padding: 14px;
+    resize: vertical;
+    min-height: 140px;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.7;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text3); }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .btn:hover::before {
+    left: 100%;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #6b59e8; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+  .btn-secondary:hover { background: var(--bg3); }
+
+  .btn-danger {
+    background: rgba(240,101,101,0.12);
+    color: var(--red);
+    border: 1px solid rgba(240,101,101,0.25);
+  }
+  .btn-danger:hover { background: rgba(240,101,101,0.2); }
+
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+  .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* ── Options Row ── */
+  .options-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+
+  .opt-group { display: flex; flex-direction: column; gap: 6px; }
+  .opt-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); font-weight: 500; }
+
+  select, input[type="number"] {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+
+  select:focus, input[type="number"]:focus { border-color: var(--accent); }
+
+  select option { background: var(--bg2); }
+
+  /* ── Toggle ── */
+  .toggle-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .toggle-label { font-size: 13px; color: var(--text2); }
+
+  .toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .toggle input { display: none; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    transition: all 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+  /* ── Progress & Loading ── */
+  .progress-wrap { margin: 20px 0; display: none; }
+  .progress-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .progress-bar { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--teal)); border-radius: 2px; transition: width 0.3s; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(124,106,247,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Results ── */
+  .results-section { display: none; }
+
+  .pair-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .pair-card:hover { border-color: var(--border2); }
+
+  .pair-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .pair-names { flex: 1; }
+  .pair-label { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--text2); }
+  .pair-files { font-size: 13px; font-weight: 500; color: var(--text); }
+
+  .score-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+  }
+
+  .score-low { background: rgba(61,214,140,0.12); color: var(--green); }
+  .score-mid { background: rgba(245,166,35,0.12); color: var(--amber); }
+  .score-high { background: rgba(240,101,101,0.12); color: var(--red); }
+
+  .verdict-tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .verdict-clean { background: rgba(61,214,140,0.1); color: var(--green); }
+  .verdict-suspect { background: rgba(245,166,35,0.1); color: var(--amber); }
+  .verdict-plagiarised { background: rgba(240,101,101,0.1); color: var(--red); }
+
+  .pair-body { padding: 0 20px 20px; display: none; border-top: 1px solid var(--border); }
+  .pair-body.open { display: block; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+
+  .metric-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+  }
+
+  .metric-name { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text3); margin-bottom: 6px; }
+  .metric-val { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); }
+
+  .diff-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+
+  .diff-panel {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .diff-panel-head {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text2);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .diff-content {
+    padding: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    line-height: 1.8;
+    color: var(--text2);
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .diff-content .match { background: rgba(124,106,247,0.22); color: var(--accent2); border-radius: 2px; padding: 0 2px; }
+
+  /* ── History Table ── */
+  .table-wrap { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+  }
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text2);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td.mono { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text); }
+
+  /* ── Notification ── */
+  .toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 14px 20px;
+    font-size: 13px;
+    color: var(--text);
+    display: none;
+    align-items: center;
+    gap: 10px;
+    z-index: 9999;
+    animation: slideIn 0.2s ease;
+    max-width: 340px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .toast::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(124, 106, 247, 0.05), rgba(62, 207, 207, 0.05));
+    background-size: 200% 200%;
+    animation: toastFlow 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes toastFlow {
+    0%, 100% { background-position: 0% 0%; }
+    50% { background-position: 100% 100%; }
+  }
+
+  .toast.show { display: flex; }
+  .toast.success { border-color: rgba(61,214,140,0.3); }
+  .toast.error { border-color: rgba(240,101,101,0.3); }
+
+  @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* ── Highlight bar ── */
+  .ngram-bar {
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .ngram-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  /* ── Modal ── */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal.show {
+    display: flex;
+  }
+
+  .modal-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .modal-content::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(45deg, var(--accent), var(--teal), var(--green), var(--amber));
+    background-size: 300% 300%;
+    border-radius: var(--radius);
+    z-index: -1;
+    opacity: 0.1;
+    animation: modalGlow 8s ease-in-out infinite;
+  }
+
+  @keyframes modalGlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .modal-message {
+    font-size: 13px;
+    color: var(--text2);
+    margin-bottom: 24px;
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .modal-btn {
+    padding: 10px 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+
+  .modal-btn-yes {
+    background: var(--red);
+    color: #fff;
+  }
+
+  .modal-btn-yes:hover {
+    background: #d94444;
+  }
+
+  .modal-btn-no {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+  }
+
+  .modal-btn-no:hover {
+    background: var(--bg3);
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  .empty-sub { font-size: 12px; }
+
+  /* ── Chip ── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+
+  .chip.code { background: rgba(62,207,207,0.08); color: var(--teal); border-color: rgba(62,207,207,0.2); }
+  .chip.text { background: rgba(124,106,247,0.08); color: var(--accent2); border-color: rgba(124,106,247,0.2); }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .logo span, .nav-item span { display: none; }
+    .logo { padding: 0 15px 28px; justify-content: center; }
+    .main { margin-left: 60px; padding: 20px 16px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .upload-grid { grid-template-columns: 1fr; }
+    .diff-view { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🔍</div>
+      <span>PlagiaGuard</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showPage('analyze')">
+        <span class="nav-icon">⚡</span>
+        <span>Analyze</span>
+      </div>
+      <div class="nav-item" onclick="showPage('results')">
+        <span class="nav-icon">📊</span>
+        <span>Results</span>
+      </div>
+      <div class="nav-item" onclick="showPage('history')">
+        <span class="nav-icon">🗂</span>
+        <span>History</span>
+      </div>
+      <div class="nav-item" onclick="showPage('profile')">
+        <span class="nav-icon">👤</span>
+        <span>Profile</span>
+      </div>
+      <div class="nav-item" onclick="showPage('about')">
+        <span class="nav-icon">ℹ</span>
+        <span>About</span>
+      </div>
+      <div class="nav-item" onclick="logout()" style="margin-top: auto;">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+      </div>
+    </nav>
+    <div style="padding: 16px 20px; border-top: 1px solid var(--border);">
+      <div style="font-size: 10px; color: var(--text3); font-weight: 500; letter-spacing: 0.6px; text-transform: uppercase;">Engine v2.4</div>
+      <div style="font-size: 11px; color: var(--text3); margin-top: 3px;">TF-IDF + n-gram</div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- ══════════════════ ANALYZE PAGE ══════════════════ -->
+    <div class="page active" id="page-analyze">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Analyze Submissions</div>
+          <div class="page-sub">Upload files or paste text to detect plagiarism and similarities</div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text3);" id="doc-count">0 documents loaded</div>
+      </div>
+
+      <!-- Options -->
+      <div class="card">
+        <div class="card-title">⚙ Detection Settings</div>
+        <div class="options-row">
+          <div class="opt-group">
+            <div class="opt-label">Mode</div>
+            <select id="mode">
+              <option value="text">Text / Essay</option>
+              <option value="code">Source Code</option>
+              <option value="mixed">Auto-Detect</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <div class="opt-label">Algorithm</div>
+            <select id="algorithm">
+              <option value="combined">Combined (Best)</option>
+              <option value="tfidf">TF-IDF Cosine</option>
+              <option value="ngram">N-gram Jaccard</option>
+              <option value="token">Token Sequence</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <div class="opt-label">N-gram Size</div>
+            <input type="number" id="ngramSize" value="3" min="2" max="6" style="width:70px">
+          </div>
+          <div class="opt-group">
+            <div class="opt-label">Alert Threshold</div>
+            <input type="number" id="threshold" value="30" min="5" max="95" style="width:70px">
+            <div style="font-size:10px; color:var(--text3);">percentage</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:24px; flex-wrap:wrap;">
+          <label class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="removeStopwords" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            <span class="toggle-label">Remove stopwords</span>
+          </label>
+          <label class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="normalizeCode" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            <span class="toggle-label">Normalize code (strip comments, rename vars)</span>
+          </label>
+          <label class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="stemming" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            <span class="toggle-label">Apply stemming</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Upload Zones -->
+      <div class="card">
+        <div class="card-title">📁 Document Input</div>
+        <div class="upload-grid">
+          <div>
+            <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="dragOver(event,this)" ondragleave="dragLeave(this)" ondrop="dropFiles(event,this)">
+              <div class="upload-icon">📄</div>
+              <div class="upload-title">Drop files here or click to browse</div>
+              <div class="upload-sub">.txt, .py, .js, .java, .c, .cpp, .html, .css</div>
+              <input type="file" id="fileInput" multiple accept=".txt,.py,.js,.java,.c,.cpp,.html,.css,.ts,.go,.rb,.php" style="display:none" onchange="handleFiles(this.files)">
+            </div>
+            <div class="file-list" id="fileList"></div>
+          </div>
+          <div>
+            <div class="text-area-wrap">
+              <div class="text-area-label">Document A — Paste or type content</div>
+              <textarea id="textA" placeholder="Paste student submission A here...&#10;&#10;Supports text, essays, code snippets..." rows="5"></textarea>
+            </div>
+            <div class="text-area-wrap">
+              <div class="text-area-label">Document B — Paste or type content</div>
+              <textarea id="textB" placeholder="Paste student submission B here...&#10;&#10;Or paste source material to check against..." rows="5"></textarea>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-secondary" onclick="loadExample('text')" style="font-size:11px; padding:6px 12px">Load text example</button>
+              <button class="btn btn-secondary" onclick="loadExample('code')" style="font-size:11px; padding:6px 12px">Load code example</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-label">
+            <span id="progressLabel">Preprocessing documents...</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="runAnalysis()">⚡ Run Analysis</button>
+          <button class="btn btn-secondary" onclick="clearAll()">✕ Clear All</button>
+          <div id="statusMsg" style="font-size:12px; color:var(--text3);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ RESULTS PAGE ══════════════════ -->
+    <div class="page" id="page-results">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Analysis Results</div>
+          <div class="page-sub">Detailed similarity breakdown for each document pair</div>
+        </div>
+        <div id="resultsMeta" style="font-size:11px; color:var(--text3); font-family:'IBM Plex Mono', monospace;"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row" id="statsRow">
+        <div class="stat-card teal">
+          <div class="stat-label">Pairs Compared</div>
+          <div class="stat-value teal" id="stat-pairs">0</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Flagged</div>
+          <div class="stat-value red" id="stat-flagged">0</div>
+        </div>
+        <div class="stat-card amber">
+          <div class="stat-label">Avg Similarity</div>
+          <div class="stat-value amber" id="stat-avg">0%</div>
+        </div>
+        <div class="stat-card green">
+          <div class="stat-label">Highest Score</div>
+          <div class="stat-value green" id="stat-max">0%</div>
+        </div>
+      </div>
+
+      <div id="resultsList">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div class="empty-title">No results yet</div>
+          <div class="empty-sub">Run an analysis from the Analyze tab to see results here.</div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-primary" onclick="exportReport()">⬇ Export Report</button>
+        <button class="btn btn-secondary" onclick="showPage('analyze')">← New Analysis</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ HISTORY PAGE ══════════════════ -->
+    <div class="page" id="page-history">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Analysis History</div>
+          <div class="page-sub">All past runs stored in browser database (IndexedDB)</div>
+        </div>
+        <button class="btn btn-danger" onclick="clearHistory()">🗑 Clear History</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Documents</th>
+                <th>Pairs</th>
+                <th>Mode</th>
+                <th>Highest Score</th>
+                <th>Flagged</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text3);">No history yet. Run your first analysis!</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ ABOUT PAGE ══════════════════ -->
+    <div class="page" id="page-about">
+      <div class="topbar">
+        <div>
+          <div class="page-title">How It Works</div>
+          <div class="page-sub">Algorithmic techniques powering PlagiaGuard</div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        <div class="card">
+          <div class="card-title">📝 Text Analysis Pipeline</div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(124,106,247,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--accent2); flex-shrink:0;">1</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">Preprocessing</div>
+                <div style="font-size:12px; color:var(--text2);">Lowercasing, punctuation removal, stopword filtering (174-word list), Porter stemming algorithm.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(124,106,247,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--accent2); flex-shrink:0;">2</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">TF-IDF Vectorisation</div>
+                <div style="font-size:12px; color:var(--text2);">Term Frequency–Inverse Document Frequency converts documents into weighted numeric vectors.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(124,106,247,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--accent2); flex-shrink:0;">3</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">Cosine Similarity</div>
+                <div style="font-size:12px; color:var(--text2);">Measures angular distance between document vectors — immune to length differences.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(124,106,247,0.15); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--accent2); flex-shrink:0;">4</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">N-gram Jaccard Index</div>
+                <div style="font-size:12px; color:var(--text2);">Overlapping character/word n-gram shingles catch paraphrasing and reordering.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">💻 Code Analysis Pipeline</div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(62,207,207,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--teal); flex-shrink:0;">1</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">Comment & Format Strip</div>
+                <div style="font-size:12px; color:var(--text2);">Removes single/multi-line comments, extra whitespace, and blank lines from source code.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(62,207,207,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--teal); flex-shrink:0;">2</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">Variable Normalisation</div>
+                <div style="font-size:12px; color:var(--text2);">Identifier renaming detected and replaced with canonical VAR_N tokens — defeats obfuscation.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(62,207,207,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--teal); flex-shrink:0;">3</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">Token Sequence Matching</div>
+                <div style="font-size:12px; color:var(--text2);">Lexical tokenisation then Longest Common Subsequence comparison on operator/keyword sequences.</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-start;">
+              <div style="width:28px; height:28px; background:rgba(62,207,207,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--teal); flex-shrink:0;">4</div>
+              <div>
+                <div style="font-weight:500; color:var(--text); margin-bottom:3px;">Structural Fingerprinting</div>
+                <div style="font-size:12px; color:var(--text2);">Control-flow hashes (loop nesting, conditional depth) compared via Winnowing algorithm.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">🎯 Scoring Formula</div>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;">
+          <div style="background:var(--bg3); border-radius:var(--radius-sm); padding:16px; border:1px solid var(--border);">
+            <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;">Combined Score</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--accent2); line-height:1.9;">
+              0.40 × TF-IDF cosine<br>
+              0.35 × Jaccard n-gram<br>
+              0.25 × Token LCS
+            </div>
+          </div>
+          <div style="background:var(--bg3); border-radius:var(--radius-sm); padding:16px; border:1px solid var(--border);">
+            <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;">Verdict Thresholds</div>
+            <div style="font-size:12px; line-height:2;">
+              <span style="color:var(--green);">●</span> Clean &nbsp;&lt; threshold<br>
+              <span style="color:var(--amber);">●</span> Suspect threshold – 65%<br>
+              <span style="color:var(--red);">●</span> Plagiarised &nbsp;&gt; 65%
+            </div>
+          </div>
+          <div style="background:var(--bg3); border-radius:var(--radius-sm); padding:16px; border:1px solid var(--border);">
+            <div style="font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.6px; margin-bottom:8px;">Anti-Obfuscation</div>
+            <div style="font-size:12px; color:var(--text2); line-height:1.8;">
+              Variable renaming<br>
+              Synonym substitution<br>
+              Block reordering<br>
+              Comment insertion
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PROFILE PAGE ══════════════════ -->
+    <div class="page" id="page-profile">
+      <div class="topbar">
+        <div>
+          <div class="page-title">User Profile</div>
+          <div class="page-sub">Manage your account settings and view your information</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👤 Account Information</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div>
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--text3); margin-bottom: 4px;">Username</div>
+              <div style="font-size: 16px; color: var(--text); font-weight: 500;" id="profile-username">Loading...</div>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--text3); margin-bottom: 4px;">Account Type</div>
+              <div style="font-size: 16px; color: var(--text); font-weight: 500;">Administrator</div>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--text3); margin-bottom: 4px;">Last Login</div>
+              <div style="font-size: 16px; color: var(--text); font-weight: 500;" id="profile-lastlogin">Loading...</div>
+            </div>
+          </div>
+          <div>
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--text3); margin-bottom: 4px;">Total Analyses</div>
+              <div style="font-size: 16px; color: var(--text); font-weight: 500;" id="profile-analyses">0</div>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--text3); margin-bottom: 4px;">Documents Processed</div>
+              <div style="font-size: 16px; color: var(--text); font-weight: 500;" id="profile-documents">0</div>
+            </div>
+            <div style="margin-bottom: 16px;">
+              <div style="font-size: 12px; color: var(--text3); margin-bottom: 4px;">Flagged Cases</div>
+              <div style="font-size: 16px; color: var(--text); font-weight: 500;" id="profile-flagged">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙ Account Settings</div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <label class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="profile-notifications" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            <span class="toggle-label">Enable email notifications for analysis results</span>
+          </label>
+          <label class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="profile-autosave" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            <span class="toggle-label">Auto-save analysis results to history</span>
+          </label>
+          <label class="toggle-row">
+            <label class="toggle"><input type="checkbox" id="profile-darkmode" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+            <span class="toggle-label">Dark mode (currently enabled)</span>
+          </label>
+        </div>
+        <div class="btn-row" style="margin-top: 20px;">
+          <button class="btn btn-primary" onclick="saveProfileSettings()">💾 Save Settings</button>
+          <button class="btn btn-secondary" onclick="resetProfileSettings()">↺ Reset to Defaults</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔐 Security</div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <div style="font-size: 14px; color: var(--text); margin-bottom: 8px;">Change Password</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <input type="password" placeholder="Current password" id="current-password" style="padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg3); color: var(--text);">
+              <input type="password" placeholder="New password" id="new-password" style="padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg3); color: var(--text);">
+            </div>
+            <div class="btn-row" style="margin-top: 12px;">
+              <button class="btn btn-secondary" onclick="changePassword()">🔑 Change Password</button>
+            </div>
+          </div>
+          <div style="border-top: 1px solid var(--border); padding-top: 16px;">
+            <div style="font-size: 14px; color: var(--text); margin-bottom: 8px;">Session Management</div>
+            <div class="btn-row">
+              <button class="btn btn-danger" onclick="logout()">🚪 Logout from all devices</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span>
+  <span id="toastMsg">Done</span>
+</div>
+
+<!-- Logout Confirmation Modal -->
+<div class="modal" id="logoutModal">
+  <div class="modal-content">
+    <div class="modal-title">🚪 Logout</div>
+    <div class="modal-message">Are you sure you want to logout?</div>
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-no" onclick="cancelLogout()">No</button>
+      <button class="modal-btn modal-btn-yes" onclick="confirmLogout()">Yes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  DATABASE  (IndexedDB)
+// ══════════════════════════════════════════════════
+let db;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('PlagiaGuardDB', 1);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('analyses')) {
+        const store = d.createObjectStore('analyses', { keyPath: 'id', autoIncrement: true });
+        store.createIndex('date', 'date', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function saveAnalysis(record) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('analyses', 'readwrite');
+    const req = tx.objectStore('analyses').add(record);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function loadHistory() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('analyses', 'readonly');
+    const req = tx.objectStore('analyses').index('date').getAll();
+    req.onsuccess = () => resolve(req.result.reverse());
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function clearDB() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('analyses', 'readwrite');
+    const req = tx.objectStore('analyses').clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// ══════════════════════════════════════════════════
+//  STOPWORDS
+// ══════════════════════════════════════════════════
+const STOPWORDS = new Set(['a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','can','need','this','that','these','those','i','you','he','she','it','we','they','me','him','her','us','them','my','your','his','its','our','their','mine','yours','ours','theirs','what','which','who','whom','when','where','why','how','all','any','both','each','few','more','most','other','some','such','no','not','only','same','so','than','too','very','just','but','if','then','there','here','into','up','out','about','as']);
+
+// ══════════════════════════════════════════════════
+//  PORTER STEMMER (simplified)
+// ══════════════════════════════════════════════════
+function stem(word) {
+  if (word.length < 4) return word;
+  const sfx = [['ational','ate'],['tional','tion'],['enci','ence'],['anci','ance'],['izer','ize'],['ising','ise'],['izing','ize'],['ising','ise'],['alism','al'],['ation','ate'],['ative',''],['alize','al'],['iciti','ic'],['ical','ic'],['ful',''],['ness',''],['ness',''],['ment',''],['ments',''],['ings',''],['ing',''],['ed',''],['er',''],['ies','y'],['ied','y'],['es',''],['s','']];
+  let w = word.toLowerCase();
+  for (const [s, r] of sfx) {
+    if (w.endsWith(s) && w.length - s.length >= 2) return w.slice(0, w.length - s.length) + r;
+  }
+  return w;
+}
+
+// ══════════════════════════════════════════════════
+//  CODE NORMALISER
+// ══════════════════════════════════════════════════
+function normalizeCode(code) {
+  let c = code;
+  c = c.replace(/\/\*[\s\S]*?\*\//g, '');
+  c = c.replace(/\/\/[^\n]*/g, '');
+  c = c.replace(/#[^\n]*/g, '');
+  c = c.replace(/"""[\s\S]*?"""/g, '""');
+  c = c.replace(/'''[\s\S]*?'''/g, "''");
+  c = c.replace(/"[^"]*"/g, '"STR"');
+  c = c.replace(/'[^']*'/g, '"STR"');
+  c = c.replace(/\b\d+(\.\d+)?\b/g, 'NUM');
+  // Normalize identifiers (variable/func names)
+  const identMap = {};
+  let identCount = 0;
+  const keywords = new Set(['if','else','elif','for','while','return','def','class','function','var','let','const','int','float','string','bool','void','import','from','include','public','private','static','new','this','self','print','println','printf','cout','cin','endl','true','false','null','None','undefined']);
+  c = c.replace(/\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g, (m) => {
+    if (keywords.has(m.toLowerCase())) return m;
+    if (!identMap[m]) identMap[m] = 'VAR' + (++identCount);
+    return identMap[m];
+  });
+  c = c.replace(/\s+/g, ' ').trim();
+  return c;
+}
+
+// ══════════════════════════════════════════════════
+//  TEXT PREPROCESSING
+// ══════════════════════════════════════════════════
+function preprocessText(text, opts = {}) {
+  let t = text.toLowerCase();
+  t = t.replace(/[^\w\s]/g, ' ');
+  let tokens = t.split(/\s+/).filter(Boolean);
+  if (opts.stopwords) tokens = tokens.filter(w => !STOPWORDS.has(w));
+  if (opts.stemming) tokens = tokens.map(stem);
+  return tokens.filter(t => t.length > 1);
+}
+
+function detectType(text) {
+  const codeSignals = [/\bfunction\b/,/\bdef\b/,/\bclass\b/,/\bfor\b.*{/,/\bif\b.*{/,/=>/,/\bimport\b/,/\binclude\b/,/;$/m,/{[\s\S]*}/];
+  let score = 0;
+  for (const r of codeSignals) if (r.test(text)) score++;
+  return score >= 3 ? 'code' : 'text';
+}
+
+// ══════════════════════════════════════════════════
+//  TF-IDF
+// ══════════════════════════════════════════════════
+function buildTFIDF(docs) {
+  const N = docs.length;
+  const tf = docs.map(tokens => {
+    const map = {};
+    tokens.forEach(t => { map[t] = (map[t] || 0) + 1; });
+    const total = tokens.length || 1;
+    for (const k in map) map[k] /= total;
+    return map;
+  });
+
+  const df = {};
+  docs.forEach(tokens => {
+    const seen = new Set(tokens);
+    seen.forEach(t => { df[t] = (df[t] || 0) + 1; });
+  });
+
+  const idf = {};
+  for (const t in df) idf[t] = Math.log((N + 1) / (df[t] + 1)) + 1;
+
+  return tf.map(tmap => {
+    const vec = {};
+    for (const t in tmap) vec[t] = tmap[t] * (idf[t] || 1);
+    return vec;
+  });
+}
+
+function cosineSim(v1, v2) {
+  let dot = 0, n1 = 0, n2 = 0;
+  for (const k in v1) {
+    if (v2[k]) dot += v1[k] * v2[k];
+    n1 += v1[k] ** 2;
+  }
+  for (const k in v2) n2 += v2[k] ** 2;
+  const denom = Math.sqrt(n1) * Math.sqrt(n2);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+// ══════════════════════════════════════════════════
+//  N-GRAM JACCARD
+// ══════════════════════════════════════════════════
+function ngrams(tokens, n) {
+  const grams = new Set();
+  for (let i = 0; i <= tokens.length - n; i++) {
+    grams.add(tokens.slice(i, i + n).join(' '));
+  }
+  return grams;
+}
+
+function jaccardSim(setA, setB) {
+  if (setA.size === 0 && setB.size === 0) return 0;
+  let inter = 0;
+  setA.forEach(g => { if (setB.has(g)) inter++; });
+  const union = setA.size + setB.size - inter;
+  return union === 0 ? 0 : inter / union;
+}
+
+// ══════════════════════════════════════════════════
+//  LCS (Token Sequence)
+// ══════════════════════════════════════════════════
+function lcsLength(a, b) {
+  const m = Math.min(a.length, 60), n = Math.min(b.length, 60);
+  const aa = a.slice(0, m), bb = b.slice(0, n);
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = aa[i-1] === bb[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  return dp[m][n];
+}
+
+function lcsSim(tA, tB) {
+  if (!tA.length || !tB.length) return 0;
+  const lcs = lcsLength(tA, tB);
+  return (2 * lcs) / (tA.length + tB.length);
+}
+
+// ══════════════════════════════════════════════════
+//  FIND MATCHING SNIPPETS
+// ══════════════════════════════════════════════════
+function findMatches(tokA, tokB, n = 4) {
+  const gA = {};
+  for (let i = 0; i <= tokA.length - n; i++) {
+    const g = tokA.slice(i, i + n).join(' ');
+    if (!gA[g]) gA[g] = i;
+  }
+  const matches = [];
+  for (let i = 0; i <= tokB.length - n; i++) {
+    const g = tokB.slice(i, i + n).join(' ');
+    if (gA[g] !== undefined) {
+      matches.push({ posA: gA[g], posB: i, gram: g });
+    }
+  }
+  return matches.slice(0, 20);
+}
+
+// ══════════════════════════════════════════════════
+//  HIGHLIGHT helper
+// ══════════════════════════════════════════════════
+function highlightText(tokens, matchPositions, n, maxLen = 400) {
+  const matchSet = new Set(matchPositions.map(m => m));
+  let out = '', len = 0;
+  for (let i = 0; i < Math.min(tokens.length, 120); i++) {
+    const word = tokens[i];
+    if (len + word.length > maxLen) { out += '…'; break; }
+    if (matchSet.has(i)) out += `<span class="match">${word}</span> `;
+    else out += word + ' ';
+    len += word.length + 1;
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════════
+//  CORE COMPARISON ENGINE
+// ══════════════════════════════════════════════════
+function compareDocuments(docA, docB, opts) {
+  const isCode = opts.mode === 'code' || (opts.mode === 'mixed' && detectType(docA.raw) === 'code');
+  let prepA, prepB;
+
+  if (isCode && opts.normalizeCode) {
+    prepA = preprocessText(normalizeCode(docA.raw), opts);
+    prepB = preprocessText(normalizeCode(docB.raw), opts);
+  } else {
+    prepA = preprocessText(docA.raw, opts);
+    prepB = preprocessText(docB.raw, opts);
+  }
+
+  const algo = opts.algorithm;
+  const n = opts.ngramSize;
+
+  // TF-IDF
+  const vecs = buildTFIDF([prepA, prepB]);
+  const tfidfScore = cosineSim(vecs[0], vecs[1]);
+
+  // Jaccard n-gram
+  const gA = ngrams(prepA, n), gB = ngrams(prepB, n);
+  const jaccardScore = jaccardSim(gA, gB);
+
+  // LCS Token
+  const lcsScore = lcsSim(prepA.slice(0, 100), prepB.slice(0, 100));
+
+  let final;
+  if (algo === 'tfidf') final = tfidfScore;
+  else if (algo === 'ngram') final = jaccardScore;
+  else if (algo === 'token') final = lcsScore;
+  else final = 0.40 * tfidfScore + 0.35 * jaccardScore + 0.25 * lcsScore;
+
+  const pct = Math.round(final * 100);
+  const threshold = opts.threshold;
+
+  let verdict;
+  if (pct >= 65) verdict = 'plagiarised';
+  else if (pct >= threshold) verdict = 'suspect';
+  else verdict = 'clean';
+
+  const matches = findMatches(prepA, prepB, Math.max(3, n - 1));
+  const posA = matches.map(m => m.posA);
+  const posB = matches.map(m => m.posB);
+
+  return {
+    score: pct,
+    tfidf: Math.round(tfidfScore * 100),
+    jaccard: Math.round(jaccardScore * 100),
+    lcs: Math.round(lcsScore * 100),
+    verdict,
+    tokensA: prepA,
+    tokensB: prepB,
+    matchPosA: posA,
+    matchPosB: posB,
+    isCode,
+    matchCount: matches.length
+  };
+}
+
+// ══════════════════════════════════════════════════
+//  FILE HANDLING & STATE
+// ══════════════════════════════════════════════════
+let documents = [];
+
+function updateDocCount() {
+  const n = documents.length + (document.getElementById('textA').value.trim() ? 1 : 0) + (document.getElementById('textB').value.trim() ? 1 : 0);
+  document.getElementById('doc-count').textContent = n + ' document' + (n === 1 ? '' : 's') + ' loaded';
+}
+
+function handleFiles(files) {
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      documents.push({ name: file.name, raw: e.target.result, size: file.size });
+      renderFileList();
+      updateDocCount();
+    };
+    reader.readAsText(file);
+  }
+}
+
+function renderFileList() {
+  const list = document.getElementById('fileList');
+  list.innerHTML = '';
+  documents.forEach((doc, i) => {
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    const type = detectType(doc.raw);
+    el.innerHTML = `<span class="chip ${type}">${type === 'code' ? '💻 code' : '📝 text'}</span><span class="file-item-name" title="${doc.name}">${doc.name}</span><span class="file-item-size">${(doc.size / 1024).toFixed(1)} KB</span><span class="file-item-remove" onclick="removeFile(${i})">×</span>`;
+    list.appendChild(el);
+  });
+}
+
+function removeFile(i) {
+  documents.splice(i, 1);
+  renderFileList();
+  updateDocCount();
+}
+
+function dragOver(e, el) { e.preventDefault(); el.classList.add('drag-over'); }
+function dragLeave(el) { el.classList.remove('drag-over'); }
+function dropFiles(e, el) {
+  e.preventDefault(); el.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+}
+
+function clearAll() {
+  documents = [];
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('textA').value = '';
+  document.getElementById('textB').value = '';
+  updateDocCount();
+  document.getElementById('statusMsg').textContent = '';
+}
+
+// ══════════════════════════════════════════════════
+//  EXAMPLE CONTENT
+// ══════════════════════════════════════════════════
+function loadExample(type) {
+  if (type === 'text') {
+    document.getElementById('textA').value = `The water cycle, also known as the hydrological cycle, is a continuous process by which water is circulated through the Earth's systems. Water evaporates from oceans, lakes, and rivers due to solar energy. This water vapor rises and cools, forming clouds through condensation. Eventually, precipitation occurs when water falls as rain or snow. The water then flows into rivers and streams, replenishing groundwater and returning to the ocean to begin the cycle again. This process is fundamental to life on Earth and regulates climate patterns worldwide.`;
+    document.getElementById('textB').value = `The hydrological cycle, commonly referred to as the water cycle, is an ongoing process whereby water circulates across Earth's various systems. Solar radiation causes water to evaporate from large bodies of water such as seas, ponds, and streams. The resulting vapor ascends and cools, leading to cloud formation via condensation. Water subsequently returns to the surface through precipitation in the form of rainfall or snowfall. This water then travels through rivers into streams, recharging underground aquifers and eventually returning to the sea, completing the cycle. This fundamental process sustains all life and influences global climate.`;
+  } else {
+    document.getElementById('textA').value = `def calculate_sum(numbers):
+    # Calculate total sum
+    total = 0
+    for num in numbers:
+        total = total + num
+    return total
+
+def find_max(data):
+    maximum = data[0]
+    for i in range(1, len(data)):
+        if data[i] > maximum:
+            maximum = data[i]
+    return maximum
+
+result = calculate_sum([1, 2, 3, 4, 5])
+print("Sum:", result)`;
+    document.getElementById('textB').value = `def get_total(arr):
+    # Find the total value
+    s = 0
+    for x in arr:
+        s = s + x
+    return s
+
+def biggest(lst):
+    m = lst[0]
+    for j in range(1, len(lst)):
+        if lst[j] > m:
+            m = lst[j]
+    return m
+
+res = get_total([1, 2, 3, 4, 5])
+print("Total:", res)`;
+  }
+  updateDocCount();
+}
+
+// ══════════════════════════════════════════════════
+//  MAIN ANALYSIS
+// ══════════════════════════════════════════════════
+let lastResults = [];
+
+async function runAnalysis() {
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analyzing…';
+
+  const opts = {
+    mode: document.getElementById('mode').value,
+    algorithm: document.getElementById('algorithm').value,
+    ngramSize: parseInt(document.getElementById('ngramSize').value) || 3,
+    threshold: parseInt(document.getElementById('threshold').value) || 30,
+    stopwords: document.getElementById('removeStopwords').checked,
+    stemming: document.getElementById('stemming').checked,
+    normalizeCode: document.getElementById('normalizeCode').checked,
+  };
+
+  // Collect docs
+  const allDocs = [...documents];
+  const tA = document.getElementById('textA').value.trim();
+  const tB = document.getElementById('textB').value.trim();
+  if (tA) allDocs.push({ name: 'Document A (pasted)', raw: tA });
+  if (tB) allDocs.push({ name: 'Document B (pasted)', raw: tB });
+
+  if (allDocs.length < 2) {
+    showToast('Need at least 2 documents to compare.', 'error');
+    btn.disabled = false; btn.innerHTML = '⚡ Run Analysis';
+    return;
+  }
+
+  // Show progress
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressPct = document.getElementById('progressPct');
+  progressWrap.style.display = 'block';
+
+  const pairs = [];
+  for (let i = 0; i < allDocs.length; i++)
+    for (let j = i + 1; j < allDocs.length; j++)
+      pairs.push([i, j]);
+
+  const results = [];
+  const steps = ['Tokenizing…', 'Building TF-IDF vectors…', 'Computing cosine similarity…', 'Running n-gram Jaccard…', 'LCS token matching…', 'Compiling report…'];
+
+  for (let p = 0; p < pairs.length; p++) {
+    const [i, j] = pairs[p];
+    const stepLabel = steps[Math.min(p, steps.length - 1)];
+    progressLabel.textContent = stepLabel;
+    const pct = Math.round(((p + 1) / pairs.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressPct.textContent = pct + '%';
+
+    await new Promise(r => setTimeout(r, 60));
+
+    const res = compareDocuments(allDocs[i], allDocs[j], opts);
+    results.push({ docA: allDocs[i].name, docB: allDocs[j].name, ...res });
+  }
+
+  progressWrap.style.display = 'none';
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Run Analysis';
+
+  lastResults = results;
+
+  // Save to DB
+  const record = {
+    date: new Date().toISOString(),
+    mode: opts.mode,
+    algorithm: opts.algorithm,
+    docCount: allDocs.length,
+    pairCount: results.length,
+    highestScore: Math.max(...results.map(r => r.score)),
+    flagged: results.filter(r => r.verdict !== 'clean').length,
+    results: results.map(r => ({ docA: r.docA, docB: r.docB, score: r.score, verdict: r.verdict }))
+  };
+  await saveAnalysis(record);
+
+  renderResults(results, opts);
+  showPage('results');
+  showToast(`Analysis complete — ${pairs.length} pair${pairs.length !== 1 ? 's' : ''} compared.`, 'success');
+}
+
+// ══════════════════════════════════════════════════
+//  RENDER RESULTS
+// ══════════════════════════════════════════════════
+function renderResults(results, opts) {
+  const list = document.getElementById('resultsList');
+  list.innerHTML = '';
+
+  const flagged = results.filter(r => r.verdict !== 'clean').length;
+  const avg = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length) : 0;
+  const maxScore = results.length ? Math.max(...results.map(r => r.score)) : 0;
+
+  document.getElementById('stat-pairs').textContent = results.length;
+  document.getElementById('stat-flagged').textContent = flagged;
+  document.getElementById('stat-avg').textContent = avg + '%';
+  document.getElementById('stat-max').textContent = maxScore + '%';
+
+  const sorted = [...results].sort((a, b) => b.score - a.score);
+
+  sorted.forEach((r, idx) => {
+    const scoreClass = r.score >= 65 ? 'score-high' : r.score >= (opts && opts.threshold || 30) ? 'score-mid' : 'score-low';
+    const vClass = r.verdict === 'plagiarised' ? 'verdict-plagiarised' : r.verdict === 'suspect' ? 'verdict-suspect' : 'verdict-clean';
+    const vLabel = r.verdict === 'plagiarised' ? '⚠ Plagiarised' : r.verdict === 'suspect' ? '◉ Suspect' : '✓ Clean';
+
+    const card = document.createElement('div');
+    card.className = 'pair-card';
+    card.innerHTML = `
+      <div class="pair-header" onclick="togglePair(${idx})">
+        <div class="pair-names">
+          <div class="pair-label">${r.isCode ? '💻 Code' : '📝 Text'} Comparison #${idx + 1}</div>
+          <div class="pair-files">${r.docA} <span style="color:var(--text3)"> ↔ </span> ${r.docB}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="verdict-tag ${vClass}">${vLabel}</span>
+          <span class="score-badge ${scoreClass}">${r.score}%</span>
+          <span style="color:var(--text3); font-size:18px;" id="chevron-${idx}">›</span>
+        </div>
+      </div>
+      <div class="pair-body" id="body-${idx}">
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <div class="metric-name">TF-IDF Cosine</div>
+            <div class="metric-val" style="color:var(--accent2)">${r.tfidf}%</div>
+            <div class="ngram-bar"><div class="ngram-fill" style="width:${r.tfidf}%; background:var(--accent);"></div></div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-name">Jaccard N-gram</div>
+            <div class="metric-val" style="color:var(--teal)">${r.jaccard}%</div>
+            <div class="ngram-bar"><div class="ngram-fill" style="width:${r.jaccard}%; background:var(--teal);"></div></div>
+          </div>
+          <div class="metric-box">
+            <div class="metric-name">Token LCS</div>
+            <div class="metric-val" style="color:var(--amber)">${r.lcs}%</div>
+            <div class="ngram-bar"><div class="ngram-fill" style="width:${r.lcs}%; background:var(--amber);"></div></div>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--text3); margin-bottom:8px;">${r.matchCount} matching segment${r.matchCount !== 1 ? 's' : ''} found — highlighted below</div>
+        <div class="diff-view">
+          <div class="diff-panel">
+            <div class="diff-panel-head"><span>${r.docA}</span><span style="color:var(--accent2);">${r.matchPosA.length} hits</span></div>
+            <div class="diff-content">${highlightText(r.tokensA, r.matchPosA, 3)}</div>
+          </div>
+          <div class="diff-panel">
+            <div class="diff-panel-head"><span>${r.docB}</span><span style="color:var(--accent2);">${r.matchPosB.length} hits</span></div>
+            <div class="diff-content">${highlightText(r.tokensB, r.matchPosB, 3)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  document.getElementById('resultsMeta').textContent = new Date().toLocaleString();
+}
+
+function togglePair(idx) {
+  const body = document.getElementById('body-' + idx);
+  const ch = document.getElementById('chevron-' + idx);
+  body.classList.toggle('open');
+  ch.textContent = body.classList.contains('open') ? '⌄' : '›';
+}
+
+// ══════════════════════════════════════════════════
+//  EXPORT REPORT
+// ══════════════════════════════════════════════════
+function exportReport() {
+  if (!lastResults.length) { showToast('No results to export.', 'error'); return; }
+  let csv = 'Document A,Document B,Score (%),TF-IDF,Jaccard,LCS,Verdict\n';
+  lastResults.forEach(r => {
+    csv += `"${r.docA}","${r.docB}",${r.score},${r.tfidf},${r.jaccard},${r.lcs},${r.verdict}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'plagiaGuard_report_' + Date.now() + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('Report exported as CSV.', 'success');
+}
+
+// ══════════════════════════════════════════════════
+//  HISTORY
+// ══════════════════════════════════════════════════
+async function renderHistory() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '';
+  const records = await loadHistory();
+  if (!records.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:var(--text3);">No history yet. Run your first analysis!</td></tr>';
+    return;
+  }
+  records.forEach(r => {
+    const scoreClass = r.highestScore >= 65 ? 'color:var(--red)' : r.highestScore >= 30 ? 'color:var(--amber)' : 'color:var(--green)';
+    const flagClass = r.flagged > 0 ? 'color:var(--amber)' : 'color:var(--green)';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono">${new Date(r.date).toLocaleString()}</td>
+      <td>${r.docCount}</td>
+      <td>${r.pairCount}</td>
+      <td><span class="chip ${r.mode === 'code' ? 'code' : 'text'}">${r.mode}</span></td>
+      <td style="${scoreClass}; font-weight:600; font-family:'Syne',sans-serif;">${r.highestScore}%</td>
+      <td style="${flagClass}; font-weight:500;">${r.flagged}</td>
+      <td><span style="font-size:11px; color:var(--text3);">saved</span></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+async function clearHistory() {
+  await clearDB();
+  renderHistory();
+  showToast('History cleared.', 'success');
+}
+
+// ══════════════════════════════════════════════════
+//  PROFILE
+// ══════════════════════════════════════════════════
+async function renderProfile() {
+  const username = localStorage.getItem('plagiaguard_username') || 'Unknown';
+  const lastLogin = localStorage.getItem('login_timestamp') || 'Never';
+  document.getElementById('profile-username').textContent = username;
+  document.getElementById('profile-lastlogin').textContent = new Date(lastLogin).toLocaleString();
+
+  // Load stats from history
+  const records = await loadHistory();
+  let totalAnalyses = records.length;
+  let totalDocuments = 0;
+  let totalFlagged = 0;
+  records.forEach(r => {
+    totalDocuments += r.docCount;
+    totalFlagged += r.flagged;
+  });
+  document.getElementById('profile-analyses').textContent = totalAnalyses;
+  document.getElementById('profile-documents').textContent = totalDocuments;
+  document.getElementById('profile-flagged').textContent = totalFlagged;
+
+  // Load settings
+  document.getElementById('profile-notifications').checked = localStorage.getItem('profile_notifications') !== 'false';
+  document.getElementById('profile-autosave').checked = localStorage.getItem('profile_autosave') !== 'false';
+  document.getElementById('profile-darkmode').checked = localStorage.getItem('profile_darkmode') !== 'false';
+}
+
+function saveProfileSettings() {
+  localStorage.setItem('profile_notifications', document.getElementById('profile-notifications').checked);
+  localStorage.setItem('profile_autosave', document.getElementById('profile-autosave').checked);
+  localStorage.setItem('profile_darkmode', document.getElementById('profile-darkmode').checked);
+  showToast('Settings saved successfully.', 'success');
+}
+
+function resetProfileSettings() {
+  document.getElementById('profile-notifications').checked = true;
+  document.getElementById('profile-autosave').checked = true;
+  document.getElementById('profile-darkmode').checked = true;
+  saveProfileSettings();
+  showToast('Settings reset to defaults.', 'success');
+}
+
+function changePassword() {
+  const current = document.getElementById('current-password').value;
+  const newPass = document.getElementById('new-password').value;
+  if (!current || !newPass) {
+    showToast('Please fill in both password fields.', 'error');
+    return;
+  }
+  if (current !== 'plagia123') {
+    showToast('Current password is incorrect.', 'error');
+    return;
+  }
+  if (newPass.length < 6) {
+    showToast('New password must be at least 6 characters.', 'error');
+    return;
+  }
+  // In a real app, this would update the password
+  showToast('Password changed successfully.', 'success');
+  document.getElementById('current-password').value = '';
+  document.getElementById('new-password').value = '';
+}
+
+// ══════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const idx = ['analyze', 'results', 'history', 'profile', 'about'].indexOf(id);
+  document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  if (id === 'history') renderHistory();
+  if (id === 'profile') renderProfile();
+}
+
+// ══════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const msgEl = document.getElementById('toastMsg');
+  icon.textContent = type === 'error' ? '✕' : '✓';
+  msgEl.textContent = msg;
+  toast.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+// ══════════════════════════════════════════════════
+//  LOGOUT
+// ══════════════════════════════════════════════════
+function logout() {
+  // Show confirmation modal
+  document.getElementById('logoutModal').classList.add('show');
+}
+
+function confirmLogout() {
+  // Clear session data
+  localStorage.clear();
+  sessionStorage.clear();
+  
+  // Hide modal
+  document.getElementById('logoutModal').classList.remove('show');
+  
+  // Show logout message
+  showToast('Logging out...', 'success');
+  
+  // Redirect to login page after a short delay
+  setTimeout(() => {
+    window.location.href = 'login.html';
+  }, 500);
+}
+
+function cancelLogout() {
+  // Hide modal
+  document.getElementById('logoutModal').classList.remove('show');
+  showToast('Logout cancelled.', 'success');
+}
+
+// ══════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════
+initDB().then(() => {
+  document.getElementById('textA').addEventListener('input', updateDocCount);
+  document.getElementById('textB').addEventListener('input', updateDocCount);
+  updateDocCount();
+});
+</script>
+</body>
+</html>
